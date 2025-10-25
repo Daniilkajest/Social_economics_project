@@ -84,7 +84,6 @@ if not main_df.empty:
     # --- Раздел 2: Анализ корреляций ---
     st.header("Анализ связей между показателями")
 
-    # Выбор года для анализа
     last_year = main_df['year'].max()
     selected_year = st.slider(
         "Выберите год для анализа корреляций:",
@@ -93,7 +92,6 @@ if not main_df.empty:
         value=int(last_year)
     )
 
-    # Выбор показателей для осей X и Y
     col1, col2 = st.columns(2)
     with col1:
         x_axis_name = st.selectbox("Показатель для оси X:", options=list(indicator_options.keys()), index=0)
@@ -103,23 +101,28 @@ if not main_df.empty:
     x_axis_col = indicator_options[x_axis_name]
     y_axis_col = indicator_options[y_axis_name]
 
-    # Фильтруем данные по выбранному году
-    df_corr = main_df[main_df['year'] == selected_year]
+    # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+    # Фильтруем данные И СРАЗУ удаляем строки, где в нужных нам колонках есть пропуски
+    df_corr = main_df[main_df['year'] == selected_year].dropna(subset=[x_axis_col, y_axis_col])
+    # --------------------------------
 
-    fig_scatter = px.scatter(
-        df_corr,
-        x=x_axis_col,
-        y=y_axis_col,
-        hover_name='region',
-        size=x_axis_col,
-        color='region',
-        title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
-        trendline='ols', # Добавляем линию тренда
-        labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
-        # Прячем легенду, чтобы не загромождать график
-        color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+# Проверяем, остались ли данные после очистки
+    if df_corr.empty:
+        st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
+    else:
+        fig_scatter = px.scatter(
+            df_corr,
+            x=x_axis_col,
+            y=y_axis_col,
+            hover_name='region',
+            size=x_axis_col,
+            color='region',
+            title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
+            trendline='ols',
+            labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
+            color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
 
     # --- Отображение таблицы с данными ---
     with st.expander("Показать таблицу с данными"):
