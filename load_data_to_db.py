@@ -3,14 +3,12 @@ import glob
 import os
 from sqlalchemy import create_engine
 
-# --- 1. НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ ---
-
+# --- НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К ОБЛАЧНОЙ БД ---
 db_user = 'postgres'
-db_password = 'glavvrach228007'
-db_host = 'localhost'
-db_port = '5432'
-db_name = 'social_economics' # Имя базы данных, которую мы создали в pgAdmin
-table_name = 'rosstat_data'   # Имя таблицы, которая будет создана в БД
+db_password = 'Glavvrach228007' # <-- Самое важное!
+db_host = 'db.hqylrohffotpuzjqwbc.supabase.co' # <-- Из строки подключения
+db_port = '5432' # <-- Из строки подключения
+db_name = 'postgres' # <-- Из строки подключения
 
 # --- 2. НАСТРОЙКИ ПУТИ К ДАННЫМ ---
 # Этот скрипт ожидает, что рядом с ним есть папка 'data', в которой лежат все CSV.

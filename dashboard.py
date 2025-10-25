@@ -14,9 +14,9 @@ def load_and_prepare_data():
     # --- Подключение ---
     try:
         engine = create_engine(
-            f"postgresql+psycopg://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
-            f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
-        )
+    f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
+    f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
+    )
     except Exception as e:
         st.error("❌ Этап 1: Ошибка создания движка подключения к БД.")
         st.exception(e)
