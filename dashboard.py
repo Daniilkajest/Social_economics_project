@@ -103,12 +103,14 @@ if not main_df.empty:
         if df_corr.empty:
             st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
         else:
+            size_data = df_corr[x_axis_col] - df_corr[x_axis_col].min() + 1
+
             fig_scatter = px.scatter(
                 df_corr,
                 x=x_axis_col,
                 y=y_axis_col,
                 hover_name='region',
-                size=x_axis_col,
+                size=size_data, # <-- ИСПОЛЬЗУЕМ ОБРАБОТАННЫЕ ДАННЫЕ
                 color='region',
                 title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
                 trendline='ols',
