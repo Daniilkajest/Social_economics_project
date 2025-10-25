@@ -11,21 +11,34 @@ st.set_page_config(page_title="Анализ регионов РФ", layout="wide
 # Эта функция будет кэшироваться, чтобы не подключаться к БД каждый раз при изменении виджета
 @st.cache_resource
 def get_db_engine():
-    db_user = 'postgres'
-    db_password = 'glavvrach228007' # <-- ТВОЙ ПАРОЛЬ
-    db_host = 'localhost'
-    db_port = '5432'
-    db_name = 'social_economics'
     try:
-        engine = create_engine(f'postgresql+psycopg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}')
-        print("DB Connection Success")
-        return engine
-    except Exception as e:
-        print(f"DB Connection Failed: {e}")
-        st.error("Не удалось подключиться к базе данных. Проверьте настройки и пароль.")
-        return None
+        # st.secrets читает "секреты", которые мы настроим в облаке
+        db_user = st.secrets.postgres.user
+        db_password = st.secrets.postgres.password
+        db_host = st.secrets.postgres.host
+        db_port = st.secrets.postgres.port
+        db_name = st.secrets.postgres.dbname
 
-engine = get_db_engine()
+        # --- НОВАЯ ДИАГНОСТИЧЕСКАЯ ЧАСТЬ ---
+        st.info(f"Пытаюсь подключиться к хосту: {db_host}...")
+        # ------------------------------------
+
+        engine = create_engine(f'postgresql+psycopg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}')
+
+        # --- НОВАЯ ПРОВЕРКА СОЕДИНЕНИЯ ---
+        with engine.connect() as connection:
+            st.success("✅ Успех! Соединение с облачной базой данных установлено!")
+        # ------------------------------------
+
+        return engine
+
+    except Exception as e:
+        # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: ВЫВОДИМ ОШИБКУ НА ЭКРАН ---
+        st.error("❌ Ошибка подключения к базе данных!")
+        st.error("Полный текст ошибки:")
+        st.exception(e) # Эта команда красиво распечатает весь traceback
+        # ----------------------------------------------------
+        return None
 
 # --- ЗАГРУЗКА ДАННЫХ ---
 # Эта функция тоже кэшируется, чтобы не выполнять тяжелые SQL-запросы постоянно
