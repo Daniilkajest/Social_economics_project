@@ -101,6 +101,29 @@ if not main_df.empty:
     x_axis_col = indicator_options[x_axis_name]
     y_axis_col = indicator_options[y_axis_name]
 
+# --- НОВАЯ ПРОВЕРКА ---
+    if x_axis_col == y_axis_col:
+        st.warning("Пожалуйста, выберите разные показатели для осей X и Y, чтобы построить график корреляции.")
+    else:
+    # Весь остальной код для построения графика теперь внутри этого 'else'
+        df_corr = main_df[main_df['year'] == selected_year].dropna(subset=[x_axis_col, y_axis_col])
+
+    if df_corr.empty:
+        st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
+    else:
+        fig_scatter = px.scatter(
+            df_corr,
+            x=x_axis_col,
+            y=y_axis_col,
+            hover_name='region',
+            size=x_axis_col,
+            color='region',
+            title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
+            trendline='ols',
+            labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
+            color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
     # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ ---
     # Фильтруем данные И СРАЗУ удаляем строки, где в нужных нам колонках есть пропуски
     df_corr = main_df[main_df['year'] == selected_year].dropna(subset=[x_axis_col, y_axis_col])
