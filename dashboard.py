@@ -1,86 +1,81 @@
+
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine
-import plotly.express as px
+from supabase import create_client, Client
+import plotly.express as px  # <-- ВАЖНЫЙ ИМПОРТ
 
-# --- 1. НАСТРОЙКИ СТРАНИЦЫ ---
+# --- 1. НАСТРОЙКИ СТРАНИЦЫ И ПОДКЛЮЧЕНИЕ ---
 st.set_page_config(page_title="Анализ регионов РФ", layout="wide")
 st.title("Интерактивный дашборд: Социально-экономический анализ регионов РФ")
 
-# --- 2. ПОДКЛЮЧЕНИЕ К БД И ЗАГРУЗКА ДАННЫХ ---
-# Этот блок будет выполнен один раз и закэширован
+# Подключаемся к Supabase, как в видео
+try:
+    supabase_url = st.secrets["SUPABASE_URL"]
+    supabase_key = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(supabase_url, supabase_key)
+    st.success("✅ Успешно подключились к Supabase API!")
+except Exception as e:
+    st.error("❌ Не удалось подключиться к Supabase. Проверьте секреты SUPABASE_URL и SUPABASE_KEY.")
+    st.exception(e)
+    st.stop() # Останавливаем выполнение, если нет подключения
+
+# --- 2. ЗАГРУЗКА ДАННЫХ ---
 @st.cache_data
-def load_and_prepare_data():
-    # --- Подключение ---
-    # --- Подключение (простая версия) ---
-    try:
-        db_url = (
-        f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
-        f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
-    )
-        engine = create_engine(db_url)
+def load_data_from_supabase():
+    # Загружаем данные из таблицы rosstat_data.
+    # API Supabase может иметь лимит (например, 1000 строк).
+    # Чтобы получить все, нужно делать запросы в цикле.
+    print("Загрузка данных из Supabase...")
+    all_data = []
+    offset = 0
+    limit = 1000
+    while True:
+        response = supabase.table('rosstat_data').select("*").range(offset, offset + limit - 1).execute()
+        data = response.data
+        if not data:
+            break
+        all_data.extend(data)
+        offset += limit
 
-        with engine.connect() as connection:
-            st.success("✅ Успех! Соединение с пулом Supabase установлено.")
-
-    except Exception as e:
-        st.error("❌ Ошибка подключения к пулу Supabase.")
-        st.exception(e)
+    if not all_data:
+        st.warning("Не удалось загрузить данные из таблицы 'rosstat_data'.")
         return pd.DataFrame()
 
-    # --- SQL-запрос ---
-    sql_query = """
-    SELECT
-        object_name AS region, year, indicator_name, indicator_value
-    FROM rosstat_data
-    WHERE object_level = 'регион'
-      AND indicator_name IN (
+    df = pd.DataFrame(all_data)
+
+    # Фильтруем нужные показатели прямо здесь
+    indicators_to_keep = [
         'Среднедушевые денежные доходы населения', 'Уровень безработицы',
         'Коэффициенты миграционного прироста на 10 000 человек населения'
-      )
-    """
+    ]
+    df = df[df['indicator_name'].isin(indicators_to_keep)]
 
-    # --- Выполнение запроса ---
-    try:
-        df = pd.read_sql(sql_query, engine)
-        if df.empty:
-            st.warning("⚠️ Этап 2: SQL-запрос выполнен, но не вернул данных.")
-            return pd.DataFrame()
-    except Exception as e:
-        st.error("❌ Этап 2: Ошибка при выполнении SQL-запроса.")
-        st.exception(e)
-        return pd.DataFrame()
+    # Трансформация данных
+    wide_df = df.pivot_table(index=['region', 'year'], columns='indicator_name', values='indicator_value').reset_index()
+    wide_df.columns.name = None
 
-    # --- Трансформация ---
-    try:
-        wide_df = df.pivot_table(index=['region', 'year'], columns='indicator_name', values='indicator_value').reset_index()
-        wide_df.columns.name = None
-        wide_df = wide_df.rename(columns={
-            'Среднедушевые денежные доходы населения': 'avg_income',
-            'Уровень безработицы': 'unemployment_rate',
-            'Коэффициенты миграционного прироста на 10 000 человек населения': 'migration_rate'
-        })
-        return wide_df
-    except Exception as e:
-        st.error("❌ Этап 3: Ошибка при трансформации данных (pivot_table).")
-        st.exception(e)
-        return pd.DataFrame()
+    # --- ВАЖНО: ПЕРЕИМЕНОВАНИЕ КОЛОНОК ---
+    wide_df = wide_df.rename(columns={
+        'Среднедушевые денежные доходы населения': 'avg_income',
+        'Уровень безработицы': 'unemployment_rate',
+        'Коэффициенты миграционного прироста на 10 000 человек населения': 'migration_rate'
+    })
+    # ------------------------------------
+    return wide_df
 
-# --- 3. ЗАПУСК ЗАГРУЗКИ И ПРОВЕРКА ---
-main_df = load_and_prepare_data()
+main_df = load_data_from_supabase()
 
+# --- 3. ИНТЕРФЕЙС ДАШБОРДА ---
 if main_df.empty:
-    st.error("Не удалось загрузить или обработать данные. Дальнейшее выполнение невозможно. Проверьте ошибки выше.")
+    st.warning("Не удалось загрузить данные для отображения.")
 else:
-    # --- 4. ИНТЕРФЕЙС ДАШБОРДА (только если данные загружены) ---
     st.sidebar.header("Фильтры")
     selected_regions = st.sidebar.multiselect(
         "Выберите регионы:",
         options=sorted(main_df['region'].unique()),
-        default=['Москва', 'Республика Тыва']
+        default=['Москва', 'Республика Тыва', 'Тюменская область']
     )
 
-    # ... (остальной код для графиков остается таким же, как был)
     indicator_options = {
         'Среднедушевой доход': 'avg_income',
         'Уровень безработицы': 'unemployment_rate',
@@ -106,7 +101,10 @@ else:
         y_axis_name = col2.selectbox("Ось Y:", options=list(indicator_options.keys()), index=2)
         x_axis_col = indicator_options[x_axis_name]
         y_axis_col = indicator_options[y_axis_name]
-        last_year = main_df['year'].max()
-        df_corr = main_df[main_df['year'] == last_year]
-        fig2 = px.scatter(df_corr, x=x_axis_col, y=y_axis_col, hover_name='region', size=x_axis_col, color='region', title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {last_year} г.", trendline='ols')
-        st.plotly_chart(fig2, use_container_width=True)
+
+        # Убедимся, что last_year существует
+        if not main_df.empty:
+            last_year = main_df['year'].max()
+            df_corr = main_df[main_df['year'] == last_year]
+            fig2 = px.scatter(df_corr, x=x_axis_col, y=y_axis_col, hover_name='region', size=x_axis_col, color='region', title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {last_year} г.", trendline='ols')
+            st.plotly_chart(fig2, use_container_width=True)
