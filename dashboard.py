@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 
 # --- 1. НАСТРОЙКИ СТРАНИЦЫ ---
-# Эта команда должна быть первой
 st.set_page_config(
     page_title="Анализ регионов РФ",
     page_icon="🇷🇺",
@@ -13,19 +12,16 @@ st.set_page_config(
 st.title("Интерактивный дашборд: Социально-экономический анализ регионов РФ")
 
 # --- 2. ЗАГРУЗКА ДАННЫХ ИЗ ФАЙЛА ---
-# Streamlit будет кэшировать эти данные для быстрой работы
 @st.cache_data
 def load_data():
     """Загружает подготовленные данные из локального файла Parquet."""
     try:
-        # Дашборд ожидает, что рядом с ним есть папка 'dashboard_data' с файлом внутри
         df = pd.read_parquet('dashboard_data/main_data.parquet')
         return df
     except FileNotFoundError:
         st.error(
             "❌ Файл 'dashboard_data/main_data.parquet' не найден! "
-            "Пожалуйста, сначала запустите локально скрипт `prepare_data.py`, "
-            "чтобы сгенерировать этот файл, и убедитесь, что он загружен на GitHub."
+            "Убедитесь, что он существует и загружен на GitHub."
         )
         return pd.DataFrame()
 
@@ -33,13 +29,11 @@ def load_data():
 main_df = load_data()
 
 # --- 3. ОСНОВНАЯ ЛОГИКА И ИНТЕРФЕЙС ---
-# Весь последующий код будет выполняться, только если данные были успешно загружены
 if not main_df.empty:
 
     # --- Боковая панель с фильтрами ---
     st.sidebar.header("Фильтры")
 
-    # Мультиселект для выбора регионов
     all_regions = sorted(main_df['region'].unique())
     selected_regions = st.sidebar.multiselect(
         "Выберите регионы для сравнения:",
@@ -47,7 +41,6 @@ if not main_df.empty:
         default=['Москва', 'Республика Тыва', 'Тюменская область', 'Краснодарский край']
     )
 
-    # Словарь для выбора показателя
     indicator_options = {
         'Среднедушевой доход': 'avg_income',
         'Уровень безработицы': 'unemployment_rate',
@@ -66,10 +59,7 @@ if not main_df.empty:
     if not selected_regions:
         st.warning("Пожалуйста, выберите хотя бы один регион в панели слева.")
     else:
-        # Фильтруем DataFrame по выбранным регионам
         df_filtered = main_df[main_df['region'].isin(selected_regions)]
-
-        # Строим интерактивный линейный график
         fig_line = px.line(
             df_filtered,
             x='year',
@@ -84,12 +74,14 @@ if not main_df.empty:
     # --- Раздел 2: Анализ корреляций ---
     st.header("Анализ связей между показателями")
 
-    last_year = main_df['year'].max()
+    last_year_available = int(main_df['year'].max())
+    first_year_available = int(main_df['year'].min())
+
     selected_year = st.slider(
         "Выберите год для анализа корреляций:",
-        min_value=int(main_df['year'].min()),
-        max_value=int(last_year),
-        value=int(last_year)
+        min_value=first_year_available,
+        max_value=last_year_available,
+        value=last_year_available
     )
 
     col1, col2 = st.columns(2)
@@ -101,52 +93,30 @@ if not main_df.empty:
     x_axis_col = indicator_options[x_axis_name]
     y_axis_col = indicator_options[y_axis_name]
 
-# --- НОВАЯ ПРОВЕРКА ---
+    # --- ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ЛОГИКА ---
     if x_axis_col == y_axis_col:
         st.warning("Пожалуйста, выберите разные показатели для осей X и Y, чтобы построить график корреляции.")
     else:
-    # Весь остальной код для построения графика теперь внутри этого 'else'
+        # Весь код для построения графика теперь находится внутри этого 'else'
         df_corr = main_df[main_df['year'] == selected_year].dropna(subset=[x_axis_col, y_axis_col])
 
-    if df_corr.empty:
-        st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
-    else:
-        fig_scatter = px.scatter(
-            df_corr,
-            x=x_axis_col,
-            y=y_axis_col,
-            hover_name='region',
-            size=x_axis_col,
-            color='region',
-            title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
-            trendline='ols',
-            labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
-            color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
-        )
-        st.plotly_chart(fig_scatter, use_container_width=True)
-    # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    # Фильтруем данные И СРАЗУ удаляем строки, где в нужных нам колонках есть пропуски
-    df_corr = main_df[main_df['year'] == selected_year].dropna(subset=[x_axis_col, y_axis_col])
-    # --------------------------------
-
-# Проверяем, остались ли данные после очистки
-    if df_corr.empty:
-        st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
-    else:
-        fig_scatter = px.scatter(
-            df_corr,
-            x=x_axis_col,
-            y=y_axis_col,
-            hover_name='region',
-            size=x_axis_col,
-            color='region',
-            title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
-            trendline='ols',
-            labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
-            color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
-        )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        if df_corr.empty:
+            st.warning(f"Нет полных данных для построения графика '{x_axis_name}' vs '{y_axis_name}' за {selected_year} год.")
+        else:
+            fig_scatter = px.scatter(
+                df_corr,
+                x=x_axis_col,
+                y=y_axis_col,
+                hover_name='region',
+                size=x_axis_col,
+                color='region',
+                title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
+                trendline='ols',
+                labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
+                color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
+            )
+            st.plotly_chart(fig_scatter, use_container_width=True)
 
     # --- Отображение таблицы с данными ---
-    with st.expander("Показать таблицу с данными"):
+    with st.expander("Показать таблицу с данными для дашборда"):
         st.dataframe(main_df)
