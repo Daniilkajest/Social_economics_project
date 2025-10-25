@@ -13,14 +13,21 @@ st.title("Интерактивный дашборд: Социально-экон
 def load_and_prepare_data():
     # --- Подключение ---
     try:
-        engine = create_engine(
-    f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
-    f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
-    )
+        db_url = (
+            f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
+            f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
+        )
+        connect_args = {
+            "options": f"-c options=project%3D{st.secrets.postgres.project_id}"
+        }
+        engine = create_engine(db_url, connect_args=connect_args)
+        with engine.connect() as connection:
+            # Если подключение успешно, эта строка не будет видна, но это нормально
+            print("Connection successful")
     except Exception as e:
         st.error("❌ Этап 1: Ошибка создания движка подключения к БД.")
         st.exception(e)
-        return pd.DataFrame() # Возвращаем пустой DataFrame в случае ошибки
+        return pd.DataFrame()
 
     # --- SQL-запрос ---
     sql_query = """
@@ -38,7 +45,7 @@ def load_and_prepare_data():
     try:
         df = pd.read_sql(sql_query, engine)
         if df.empty:
-            st.warning("⚠️ Этап 2: SQL-запрос выполнен, но не вернул данных. Проверьте запрос и наличие данных в таблице.")
+            st.warning("⚠️ Этап 2: SQL-запрос выполнен, но не вернул данных.")
             return pd.DataFrame()
     except Exception as e:
         st.error("❌ Этап 2: Ошибка при выполнении SQL-запроса.")
