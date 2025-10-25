@@ -12,6 +12,7 @@ st.title("Интерактивный дашборд: Социально-экон
 @st.cache_data
 def load_and_prepare_data():
     # --- Подключение ---
+    # --- Подключение (простая версия) ---
     try:
         db_url = (
         f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
@@ -20,10 +21,10 @@ def load_and_prepare_data():
         engine = create_engine(db_url)
 
         with engine.connect() as connection:
-            st.success("✅ Успех! Соединение с БД установлено (прямое подключение).")
+            st.success("✅ Успех! Соединение с пулом Supabase установлено.")
 
     except Exception as e:
-        st.error("❌ Этап 1: Ошибка создания движка (прямое подключение).")
+        st.error("❌ Ошибка подключения к пулу Supabase.")
         st.exception(e)
         return pd.DataFrame()
 
