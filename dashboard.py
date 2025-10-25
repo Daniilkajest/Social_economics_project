@@ -23,9 +23,9 @@ def load_and_prepare_data():
             st.success("✅ Успех! Соединение с БД установлено (прямое подключение).")
 
     except Exception as e:
-    st.error("❌ Этап 1: Ошибка создания движка (прямое подключение).")
-    st.exception(e)
-    return pd.DataFrame()
+        st.error("❌ Этап 1: Ошибка создания движка (прямое подключение).")
+        st.exception(e)
+        return pd.DataFrame()
 
     # --- SQL-запрос ---
     sql_query = """
