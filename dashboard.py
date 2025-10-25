@@ -14,20 +14,18 @@ def load_and_prepare_data():
     # --- Подключение ---
     try:
         db_url = (
-            f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
-            f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
-        )
-        connect_args = {
-            "options": f"-c options=project%3D{st.secrets.postgres.project_id}"
-        }
-        engine = create_engine(db_url, connect_args=connect_args)
+        f"postgresql://{st.secrets.postgres.user}:{st.secrets.postgres.password}@"
+        f"{st.secrets.postgres.host}:{st.secrets.postgres.port}/{st.secrets.postgres.dbname}"
+    )
+        engine = create_engine(db_url)
+
         with engine.connect() as connection:
-            # Если подключение успешно, эта строка не будет видна, но это нормально
-            print("Connection successful")
+            st.success("✅ Успех! Соединение с БД установлено (прямое подключение).")
+
     except Exception as e:
-        st.error("❌ Этап 1: Ошибка создания движка подключения к БД.")
-        st.exception(e)
-        return pd.DataFrame()
+    st.error("❌ Этап 1: Ошибка создания движка (прямое подключение).")
+    st.exception(e)
+    return pd.DataFrame()
 
     # --- SQL-запрос ---
     sql_query = """
