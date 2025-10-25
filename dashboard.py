@@ -115,7 +115,7 @@ if not main_df.empty:
                 title=f"Связь '{x_axis_name}' и '{y_axis_name}' в {selected_year} г.",
                 trendline='ols',
                 labels={x_axis_col: x_axis_name, y_axis_col: y_axis_name},
-                color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
+                #color_discrete_map={region: 'rgba(0,0,0,0)' for region in df_corr['region'].unique()}
             )
             st.plotly_chart(fig_scatter, use_container_width=True)
 
