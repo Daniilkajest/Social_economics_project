@@ -4,8 +4,8 @@ from tqdm import tqdm
 
 # --- 1. ИМПОРТИРУЕМ НАШИ СОБСТВЕННЫЕ МОДУЛИ ---
 # Мы импортируем функции, которые написали в других файлах
-from scrape_news import get_latest_headlines
-from sentiment_analyzer import analyze_sentiment
+from scr.scrape_news import get_latest_headlines
+from scr.sentiment_analyzer import analyze_sentiment
 
 # --- 2. НАСТРОЙКИ ---
 DB_TABLE_NAME = 'media_mentions' # Название для итоговой таблицы
